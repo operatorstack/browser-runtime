@@ -1,6 +1,6 @@
 # Tests
 
-Unit tests for the browseragent package.
+Unit tests for this browser execution runtime package.
 
 ## Running Tests
 

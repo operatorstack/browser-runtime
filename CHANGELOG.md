@@ -1,4 +1,4 @@
-# @centralinc/browseragent
+# BrowserRuntime Changelog
 
 ## 1.9.6
 
