@@ -1,102 +1,219 @@
-# BrowserRuntime
+# ZCA Agents
 
-A browser automation execution runtime for agent systems.
+Agents built using **Zero Context Architecture (ZCA)**.
 
-BrowserRuntime connects reasoning systems to real browser environments and exposes structured capabilities for interaction, observation, and execution. This repository is the execution layer: it owns browser control, page interaction, DOM-aware tooling, runtime configuration, and execution primitives.
+ZCA is an architectural approach for building reliable agent systems that interact with real-world environments. It separates decision-making, execution, and environment interaction into distinct layers.
 
-Higher-level goal orchestration, verification loops, workflow state, and policy decisions belong in the operator runtime above it.
-
-## Architecture Positioning
+Instead of treating agents as a single monolithic system, ZCA structures them as:
 
 ```text
-Operator Runtime
-(control layer)
-
-↓ goals / verification / tracing
-
-BrowserRuntime
-(execution runtime)
-
-↓ actions
-
-Browser Environment
-(websites / real-world systems)
+                OPERATOR SYSTEM
+        (goals, evaluation, boundaries)
+                        │
+                        │ goal + context
+                        ▼
+              ┌─────────────────┐
+              │  ZCA Agent      │
+              │  (decision)     │
+              └─────────────────┘
+                        │
+                        │ execution request
+                        ▼
+              ┌─────────────────┐
+              │ BrowserRuntime  │
+              │ (execution)     │
+              └─────────────────┘
+                        │
+                        │ browser actions
+                        ▼
+              ┌─────────────────┐
+              │ Website / APIs  │
+              │ Environment     │
+              └─────────────────┘
+                        ▲
+                        │
+                        │ observations / state
+                        │
+              ┌─────────────────┐
+              │ Deterministic   │
+              │ Boundary Check  │
+              └─────────────────┘
+                        │
+                        │ result + trace
+                        ▼
+                OPERATOR SYSTEM
 ```
 
-## What This Repository Focuses On
+## Why ZCA Agents Exist
 
-- Browser session control
-- Page interaction
-- DOM inspection
-- Environment observation
-- Execution runtime behavior
-- Playwright-backed automation primitives
-- Tool and capability extension points
+Many agent systems mix reasoning, execution, and environment interaction into one layer. That makes them hard to debug, hard to evolve, and fragile in dynamic environments.
 
-## What It Does Not Try To Be
+ZCA agents enforce clear boundaries:
 
-This repository should not be read as the top-level agent control plane. It provides the browser-facing runtime that higher-level systems can call into. Planning, orchestration, goal management, and verification are intentionally treated as adjacent concerns.
+- the operator layer defines what must be achieved
+- the execution runtime performs actions in the environment
+- the verification layer determines whether the result is acceptable
 
-## Current Compatibility
+This separation improves:
 
-This is a documentation and positioning rebrand only.
+- reliability
+- observability
+- traceability
+- system evolution
 
-- Public APIs remain unchanged
-- Folder structure remains unchanged
-- Runtime classes and exports remain unchanged
+## Core Concepts
 
-The runtime is still published under its existing package identity until a future explicit package rename happens.
+### Operator Tasks
 
-## Installation
+Agents operate on explicit tasks, not raw prompts.
 
-Install the currently published package together with Playwright:
-
-```bash
-npm install <published-package-name> playwright @playwright/test
-```
-
-## Quick Start
+Example:
 
 ```typescript
-import { chromium } from "playwright";
-import { ComputerUseAgent } from "<published-package-name>";
+execute({
+  task: "Extract the invoice from the billing portal",
+  capability: "automation.extract_invoice",
+  context: {
+    portal: "stripe",
+    accountId: "acct_123",
+    invoiceId: "inv_1024"
+  },
+  verify(result) {
+    const violations: string[] = [];
 
-const browser = await chromium.launch({ headless: false });
-const page = await browser.newPage();
+    if (typeof result.invoiceNumber !== "string" || result.invoiceNumber.length === 0) {
+      violations.push("Missing invoice number");
+    }
 
-await page.goto("https://news.ycombinator.com/");
+    if (typeof result.amount !== "number") {
+      violations.push("Missing amount");
+    } else if (result.amount <= 0) {
+      violations.push("Amount must be greater than zero");
+    }
 
-const agent = new ComputerUseAgent({
-  apiKey: process.env.ANTHROPIC_API_KEY!,
-  page,
-});
-
-const answer = await agent.execute("Tell me the title of the top story");
-console.log(answer);
-
-await browser.close();
+    return {
+      passed: violations.length === 0,
+      violations
+    };
+  }
+})
 ```
 
-## Runtime Capabilities
+A task describes what success looks like.
+A capability defines the workflow domain used to attempt it.
 
-The existing runtime already exposes the low-level building blocks needed by higher-level operator systems, including:
+`context` provides structured input for execution.
+`verify` defines the deterministic acceptance boundary for the run.
 
-- Browser automation through Playwright
-- Structured execution through `ComputerUseAgent`
-- Capability registration and tool extension
-- Execution configuration for typing, screenshots, scrolling, and timing
-- Browser-context access for custom tools and delegated execution
-- Pause, resume, and cancel control surfaces for long-running runs
+### Context
 
-## Design Direction
+`context` provides structured, capability-specific input such as:
 
-BrowserRuntime is intended to be the browser execution substrate that other systems build on top of. In practical terms, that means:
+- entity identifiers
+- environment details
+- known task parameters
+- session or runtime handles
 
-- Keeping execution primitives composable
-- Preserving stable runtime APIs
-- Supporting operator-driven orchestration above the runtime boundary
-- Separating environment execution concerns from decision-making concerns
+Examples:
 
-## License
+```typescript
+context: {
+  portal: "stripe",
+  accountId: "acct_123",
+  invoiceId: "inv_1024"
+}
+```
 
-See `LICENSE`.
+`context` is not a prompt extension and should not contain step-by-step instructions.
+
+Good context narrows the environment.
+It does not tell the agent how to think.
+
+### Capabilities
+
+Capabilities represent operator-level actions rather than low-level tools.
+
+Examples:
+
+- `automation.extract_invoice`
+- `automation.submit_form`
+- `automation.capture_session`
+- `automation.retrieve_policy_quote`
+
+Capabilities represent bounded workflows, not single browser actions. A capability may involve multiple navigation steps, state transitions, and runtime decisions before producing a valid result.
+
+### Deterministic Verification
+
+ZCA agents evaluate outcomes using deterministic verification rules.
+
+Examples:
+
+- required output fields
+- schema validation
+- invariants
+- expected system state
+
+This ensures probabilistic execution still produces verifiable results.
+
+In practice, a capability may define default verification rules, while each execution can add stricter run-specific checks.
+
+### Execution Runtime
+
+ZCA agents delegate environment interaction to a runtime such as:
+
+- browser automation runtimes
+- API execution systems
+- integration layers
+
+In this repository, the runtime is typically BrowserAgent.
+
+### Traces
+
+Every execution produces structured traces such as:
+
+- execution attempts
+- capability selection
+- environment responses
+- verification outcomes
+
+Traces make it easier to understand what happened and why a run passed or failed.
+
+## Relationship to BrowserAgent
+
+ZCA agents operate above the browser execution runtime.
+
+```text
+Operator system
+↓
+ZCA agent
+↓
+BrowserAgent
+↓
+Website environment
+```
+
+BrowserAgent performs browser interaction.
+ZCA agents provide task-level structure, verification, and traceable execution boundaries around that runtime.
+
+## Design Philosophy
+
+ZCA agents prioritize:
+
+- explicit tasks
+- structured input
+- deterministic verification
+- observable execution
+- separation between decision and environment interaction
+
+This makes agent systems more reliable in dynamic real-world environments such as:
+
+- browser automation
+- operational workflows
+- business process automation
+- system integrations
+
+## Learn More
+
+Zero Context Architecture:
+
+[https://www.to2d.xyz/architecture/zero-context-architecture/](https://www.to2d.xyz/architecture/zero-context-architecture/)
