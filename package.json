@@ -1,7 +1,7 @@
 {
   "name": "@centralinc/browseragent",
   "version": "1.9.6",
-  "description": "Browser automation agent using Computer Use with Playwright",
+  "description": "Browser automation execution runtime for agent systems",
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -40,15 +40,14 @@
     "ai",
     "typescript"
   ],
-  "author": "Central Inc",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/centralinc/browseragent.git"
+    "url": "https://github.com/operatorstack/browseragent.git"
   },
-  "homepage": "https://github.com/centralinc/browseragent#readme",
+  "homepage": "https://github.com/operatorstack/browseragent#readme",
   "bugs": {
-    "url": "https://github.com/centralinc/browseragent/issues"
+    "url": "https://github.com/operatorstack/browseragent/issues"
   },
   "peerDependencies": {
     "@playwright/test": "^1.40.0",
